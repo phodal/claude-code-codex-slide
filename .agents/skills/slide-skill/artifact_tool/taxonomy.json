@@ -1,0 +1,245 @@
+{
+  "source_pptx": "6127e83f-af32-4c73-9ed4-8fe29c71b072.pptx",
+  "slide_count": 129,
+  "canvas": {
+    "ratio": "16:9",
+    "width_in": 10,
+    "height_in": 5.625
+  },
+  "families": {
+    "process": {
+      "slides": [
+        5,
+        6,
+        7,
+        8,
+        10,
+        12,
+        16,
+        20,
+        21,
+        22,
+        23,
+        25,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        100,
+        101,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        117,
+        118,
+        120
+      ],
+      "variants": [
+        "governance_cadence",
+        "double_diamond",
+        "delivery_funnel",
+        "continuous_loop",
+        "skills_transfer_curve",
+        "value_management_flow",
+        "iterative_delivery_board",
+        "thin_slice_comparison",
+        "inception_approach",
+        "software_delivery_stack",
+        "core_delivery_methodology",
+        "testing_pipeline"
+      ]
+    },
+    "timeline": {
+      "slides": [
+        30,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        84,
+        95
+      ],
+      "variants": [
+        "personal_journey",
+        "year_milestones",
+        "timeline_with_workstreams",
+        "month_or_week_plan",
+        "program_inception_roadmap",
+        "now_next_later",
+        "handoff_flow",
+        "iteration_plan",
+        "extended_numbered_process",
+        "high_level_roadmap",
+        "maturity_stages"
+      ]
+    },
+    "hierarchy": {
+      "slides": [
+        13,
+        14,
+        15,
+        27,
+        28,
+        29,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        61
+      ],
+      "variants": [
+        "value_tree",
+        "operating_model",
+        "tech_org",
+        "role_or_journey_steps",
+        "team_structure",
+        "collaboration_roles",
+        "polyglot_roles",
+        "capability_matrix",
+        "growth_path",
+        "role_cards",
+        "org_chart"
+      ]
+    },
+    "relationship": {
+      "slides": [
+        9,
+        11,
+        44,
+        45,
+        46,
+        47,
+        91,
+        92,
+        93,
+        94,
+        96,
+        99,
+        116,
+        119,
+        121
+      ],
+      "variants": [
+        "business_tech_overlap",
+        "three_mindsets",
+        "venn",
+        "segments",
+        "onion",
+        "framework_map",
+        "ownership_loop",
+        "capability_levers",
+        "integrated_design_iceberg",
+        "culture_clusters"
+      ]
+    },
+    "matrix": {
+      "slides": [
+        17,
+        18,
+        19,
+        58,
+        59,
+        89,
+        97,
+        98
+      ],
+      "variants": [
+        "quadrant_map",
+        "metrics_table",
+        "evidence_circles",
+        "wip_vs_time_to_value",
+        "risk_matrix",
+        "benefit_bubbles",
+        "efficiency_curve"
+      ]
+    },
+    "chart": {
+      "slides": [
+        24,
+        86,
+        87,
+        103,
+        104,
+        105,
+        106
+      ],
+      "variants": [
+        "adoption_distribution",
+        "test_pyramid",
+        "test_pyramid_vs_ice_cream_cone",
+        "pie_template_single",
+        "pie_template_double",
+        "pie_template_with_copy",
+        "pie_palette_reference"
+      ]
+    },
+    "map": {
+      "slides": [
+        81,
+        82,
+        83
+      ],
+      "variants": [
+        "footprint_hero",
+        "region_labels_map"
+      ]
+    },
+    "gallery": {
+      "slides": [
+        76,
+        77,
+        78,
+        79,
+        126,
+        127,
+        128
+      ],
+      "variants": [
+        "logo_wall",
+        "metric_plus_cards",
+        "icon_grid",
+        "image_resource_cards",
+        "deckware_cards"
+      ]
+    },
+    "style": {
+      "slides": [
+        123,
+        124,
+        125
+      ],
+      "variants": [
+        "palette",
+        "typography",
+        "writing_rules"
+      ]
+    }
+  }
+}
