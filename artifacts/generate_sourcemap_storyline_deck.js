@@ -228,6 +228,97 @@ function card(slide, x, y, w, h, { title, body, titleColor, fill, bodyFontSize, 
   }
 }
 
+function diagramNode(slide, x, y, w, h, { title, body, accent = C.blue, fill = C.panel, titleSize = 12, bodySize = 9.8 }) {
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x,
+    y,
+    w,
+    h,
+    rectRadius: 0.07,
+    fill: { color: fill },
+    line: { color: accent, pt: 1.2 },
+    shadow: safeOuterShadow(C.black, 0.08, 45, 1.2, 0.25),
+  });
+  slide.addShape(pptx.ShapeType.rect, {
+    x,
+    y,
+    w,
+    h: 0.1,
+    fill: { color: accent },
+    line: { color: accent, transparency: 100 },
+  });
+  slide.addText(title, {
+    x: x + 0.1,
+    y: y + 0.16,
+    w: w - 0.2,
+    h: 0.24,
+    fontSize: titleSize,
+    bold: true,
+    color: accent,
+    align: "center",
+    fit: "shrink",
+  });
+  if (body) {
+    slide.addText(body, {
+      x: x + 0.1,
+      y: y + 0.46,
+      w: w - 0.2,
+      h: h - 0.56,
+      fontSize: bodySize,
+      color: C.textSoft,
+      align: "center",
+      valign: "mid",
+      fit: "shrink",
+      margin: 0,
+    });
+  }
+}
+
+function diagramArrowRight(slide, x, y, w, color = C.blue) {
+  slide.addShape(pptx.ShapeType.chevron, {
+    x,
+    y,
+    w,
+    h: 0.22,
+    fill: { color, transparency: 18 },
+    line: { color, transparency: 100 },
+  });
+}
+
+function diagramArrowDown(slide, x, y, h, color = C.blue) {
+  slide.addShape(pptx.ShapeType.chevron, {
+    x,
+    y,
+    w: 0.22,
+    h,
+    rotate: 90,
+    fill: { color, transparency: 18 },
+    line: { color, transparency: 100 },
+  });
+}
+
+function diagramChip(slide, x, y, w, label, color = C.cyan) {
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x,
+    y,
+    w,
+    h: 0.26,
+    rectRadius: 0.08,
+    fill: { color: C.panelBright },
+    line: { color, pt: 1 },
+  });
+  slide.addText(label, {
+    x: x + 0.06,
+    y: y + 0.05,
+    w: w - 0.12,
+    h: 0.14,
+    fontSize: 8.8,
+    bold: true,
+    color,
+    align: "center",
+  });
+}
+
 function sectionDivider(pageNum, n, { title, body, accent = C.blue, rightNote }) {
   const slide = pptx.addSlide();
   slide.background = { color: C.bg };
@@ -567,68 +658,50 @@ function slide06_three_layer_model() {
   const slide = pptx.addSlide();
   header(slide, p, {
     section: "主链 · 01",
-    title: "三层模型：入口层、内核层、执行层",
-    subtitle: "先抽象，再下钻；这是理解 Claude Code 行为的最低复杂度模型。",
+    title: "运行时主链图：多个入口，共享一个 Query Runtime",
+    subtitle: "按 relationship / framework-map 的方式重画：入口、核心、执行面三层关系一眼可见。",
     accent: C.orange,
   });
 
-  const layers = [
-    {
-      title: "入口层",
-      color: C.cyan,
-      body: bullets([
-        "`entrypoints/cli.tsx`",
-        "`bridge/*` / `remote/*`",
-        "模式分流 + 延迟加载",
-      ]),
-    },
-    {
-      title: "内核层",
-      color: C.gold,
-      body: bullets([
-        "`main.tsx` startup orchestration",
-        "`QueryEngine.ts` 会话生命周期",
-        "`query.ts` 单轮递归状态机",
-      ]),
-    },
-    {
-      title: "执行层",
-      color: C.purple,
-      body: bullets([
-        "`toolExecution.ts` + hooks",
-        "permissions / budget / compact",
-        "agent / mcp / commands 扩展入口",
-      ]),
-    },
+  diagramChip(slide, 0.88, 1.72, 2.0, "Entry Surfaces", C.cyan);
+  diagramChip(slide, 5.14, 1.72, 2.1, "Shared Runtime", C.gold);
+  diagramChip(slide, 9.35, 1.72, 2.25, "Execution Plane", C.purple);
+
+  const entries = [
+    { x: 0.88, title: "CLI", body: "entrypoints/cli.tsx\n快路径 + 分流", accent: C.cyan },
+    { x: 2.88, title: "Bridge / Remote", body: "bridge/*\n远程入口", accent: C.blue },
+    { x: 4.88, title: "SDK / Headless", body: "cli/print.ts\n结构化输出", accent: C.green },
   ];
-
-  let x = 0.88;
-  layers.forEach(layer => {
-    card(slide, x, 2.0, 3.9, 3.8, {
-      title: layer.title,
-      titleColor: layer.color,
-      fill: C.panel,
-      body: layer.body,
-      bodyFontSize: 11.4,
-    });
-    x += 4.15;
+  entries.forEach(item => {
+    diagramNode(slide, item.x, 2.1, 1.75, 0.96, item);
   });
 
-  slide.addShape(pptx.ShapeType.chevron, {
-    x: 4.78,
-    y: 3.45,
-    w: 0.34,
-    h: 0.52,
-    fill: { color: C.lineSoft },
-    line: { color: C.lineSoft, transparency: 100 },
+  diagramNode(slide, 4.42, 3.36, 4.5, 1.3, {
+    title: "Query Runtime Core",
+    body: "main.tsx startup orchestration\nQueryEngine.ts + query.ts",
+    accent: C.gold,
+    fill: C.panelBright,
+    titleSize: 14,
+    bodySize: 10.2,
   });
-  slide.addShape(pptx.ShapeType.chevron, {
-    x: 8.94,
-    y: 3.45,
-    w: 0.34,
-    h: 0.52,
-    fill: { color: C.lineSoft },
-    line: { color: C.lineSoft, transparency: 100 },
+
+  entries.forEach((item, idx) => {
+    diagramArrowDown(slide, item.x + 0.76, 3.02, 0.34, item.accent);
+    if (idx < entries.length - 1) {
+      diagramArrowRight(slide, item.x + 1.79, 2.47, 0.22, C.lineSoft);
+    }
+  });
+
+  const runtimes = [
+    { x: 1.08, title: "Tool Runtime", body: "toolExecution.ts\n工具执行主路径", accent: C.orange },
+    { x: 3.18, title: "Permissions", body: "rules / hooks\nallow-deny-ask", accent: C.red },
+    { x: 5.28, title: "Agent Runtime", body: "runAgent / swarm\n可治理协作", accent: C.purple },
+    { x: 7.38, title: "Context Budget", body: "compact / budget\n控制递归规模", accent: C.green },
+    { x: 9.48, title: "Extension Ports", body: "MCP / command\nplugin / skill", accent: C.cyan },
+  ];
+  runtimes.forEach(item => {
+    diagramArrowDown(slide, item.x + 0.72, 4.72, 0.28, item.accent);
+    diagramNode(slide, item.x, 5.02, 1.85, 0.92, item);
   });
 
   addNotes(slide, [
@@ -646,26 +719,41 @@ function slide07_query_loop_evidence() {
   header(slide, p, {
     section: "主链 · 02",
     title: "关键证据：Query Loop 把“模型输出”转成“执行计划”",
-    subtitle: "这页替换“纯流程图”式叙述，强调可验证的源码机制。",
+    subtitle: "按 process / delivery-funnel 的思路重画，把执行链和源码信号放在同一页。",
     accent: C.green,
   });
 
-  card(slide, 0.72, 1.78, 6.0, 4.9, {
-    title: "递归循环的最小机制",
+  const steps = [
+    { x: 0.84, title: "Submit", body: "submitMessage()\n进入单轮 turn", accent: C.gold },
+    { x: 2.53, title: "Snapshot", body: "buildQueryConfig()\n冻结本轮配置", accent: C.blue },
+    { x: 4.22, title: "Stream", body: "消费 stream_event\n累积 assistant", accent: C.cyan },
+    { x: 5.91, title: "Detect", body: "收集 toolUseBlocks\n而非只看 stop", accent: C.orange },
+    { x: 7.60, title: "Execute", body: "runTools()\n进入执行阶段", accent: C.red },
+    { x: 9.29, title: "Reinject", body: "tool results ->\nnew user messages", accent: C.green },
+    { x: 10.98, title: "Decide", body: "continue / stop\nneedsFollowUp", accent: C.purple },
+  ];
+  steps.forEach((step, idx) => {
+    diagramNode(slide, step.x, 1.95, 1.5, 1.0, step);
+    if (idx < steps.length - 1) {
+      diagramArrowRight(slide, step.x + 1.53, 2.37, 0.16, step.accent);
+    }
+  });
+
+  card(slide, 0.84, 3.35, 5.95, 2.95, {
+    title: "源码信号",
     titleColor: C.green,
     fill: C.panel,
     body: bullets([
-      "流式阶段显式收集 `toolUseBlocks`，而不只依赖 stop reason。",
-      "出现 `tool_use` 后进入 `runTools()` 执行，而非结束回答。",
-      "工具结果被回注为新一轮 messages，作为后续推理输入。",
-      "`needsFollowUp` / `maxTurns` / hooks 共同决定循环边界。",
+      "流式阶段显式收集 `toolUseBlocks`，避免误判退出条件。",
+      "`tool_use` 不是终点，而是切换到执行阶段的触发器。",
+      "工具结果不是副作用，而是下一轮推理输入。",
+      "因此 Claude Code 的核心是“推理-执行-回注”的闭环。",
     ]),
-    bodyFontSize: 11.4,
+    bodyFontSize: 10.9,
   });
 
   const code = [
     "for await (const ev of streamEvents) {",
-    "  collectAssistant(ev);",
     "  if (isToolUse(ev)) toolUseBlocks.push(ev.block);",
     "}",
     "if (toolUseBlocks.length > 0) {",
@@ -675,13 +763,13 @@ function slide07_query_loop_evidence() {
     "}",
   ].join("\n");
 
-  card(slide, 6.95, 1.78, 5.7, 4.9, {
-    title: "抽象伪码（对应 query.ts）",
+  card(slide, 6.98, 3.35, 5.55, 2.95, {
+    title: "抽象伪码",
     titleColor: C.cyan,
     fill: C.panelAlt,
     body: code,
     code: true,
-    bodyFontSize: 10,
+    bodyFontSize: 9.6,
   });
 
   addNotes(slide, [
@@ -767,67 +855,52 @@ function slide11_extension_boundary() {
   header(slide, p, {
     section: "扩展 · 01",
     title: "四类扩展入口的边界与汇合点",
-    subtitle: "这一页是原 sourcemap 版最需要补强的结构化说明。",
+    subtitle: "按 relationship / framework-map 重画：入口不同，但最终收敛到共享 runtime surface。",
     accent: C.purple,
   });
 
-  const cols = [
-    {
-      title: "MCP",
-      body: bullets([
-        "外部 server 协议接入",
-        "映射 tools/resources",
-        "进入本地 runtime 执行",
-      ]),
-      color: C.cyan,
-    },
-    {
-      title: "Plugin",
-      body: bullets([
-        "安装/缓存/manifest",
-        "组织能力分发",
-        "常与 skills/commands 协同",
-      ]),
-      color: C.blue,
-    },
-    {
-      title: "Skill",
-      body: bullets([
-        "经验模板与工作流封装",
-        "常转译成 command/tool 使用",
-        "强调可复用过程",
-      ]),
-      color: C.green,
-    },
-    {
-      title: "Command",
-      body: bullets([
-        "用户显式入口",
-        "slash command surface",
-        "最终落到同一执行主链",
-      ]),
-      color: C.orange,
-    },
+  const sources = [
+    { x: 0.86, y: 1.95, title: "MCP", body: "server protocol\n映射外部能力", accent: C.cyan },
+    { x: 0.86, y: 3.2, title: "Plugin", body: "安装 / 缓存\nmanifest 分发", accent: C.blue },
+    { x: 0.86, y: 4.45, title: "Skill", body: "工作流模板\n经验封装", accent: C.green },
+    { x: 0.86, y: 5.7, title: "Command", body: "slash surface\n用户显式入口", accent: C.orange },
   ];
-
-  let x = 0.72;
-  cols.forEach(col => {
-    card(slide, x, 1.95, 2.95, 3.85, {
-      title: col.title,
-      titleColor: col.color,
-      fill: C.panel,
-      body: col.body,
-      bodyFontSize: 10.8,
-    });
-    x += 3.03;
+  sources.forEach(item => {
+    diagramNode(slide, item.x, item.y, 2.0, 0.9, item);
   });
 
-  card(slide, 0.72, 5.95, 11.95, 0.7, {
+  diagramNode(slide, 4.38, 3.0, 3.45, 1.65, {
+    title: "Shared Runtime Surface",
+    body: "Query + Tool Runtime\nPermission Governance",
+    accent: C.purple,
+    fill: C.panelBright,
+    titleSize: 14,
+    bodySize: 10.4,
+  });
+
+  sources.forEach((item, idx) => {
+    diagramArrowRight(slide, 2.98, item.y + 0.34, idx === 0 || idx === 3 ? 1.08 : 1.14, item.accent);
+  });
+
+  diagramNode(slide, 9.02, 2.22, 2.72, 1.0, {
+    title: "Model-visible",
+    body: "tool pool\n可被模型规划",
+    accent: C.gold,
+  });
+  diagramNode(slide, 9.02, 4.38, 2.72, 1.0, {
+    title: "User-visible",
+    body: "command / UI / agent\n可被用户操作",
+    accent: C.red,
+  });
+  diagramArrowRight(slide, 7.95, 3.44, 0.82, C.purple);
+  diagramArrowRight(slide, 7.95, 4.05, 0.82, C.purple);
+
+  card(slide, 4.02, 5.45, 7.95, 0.98, {
     title: "汇合结论",
     titleColor: C.gold,
-    fill: C.panelBright,
-    body: "无论入口来自 MCP / Plugin / Skill / Command，最终都进入统一的 Query + Tool Runtime + Permission 治理主链。",
-    bodyFontSize: 11.3,
+    fill: C.panelAlt,
+    body: "MCP / Plugin / Skill / Command 都不是独立引擎，它们只是不同的 capability ingress，最终必须收敛到统一 runtime。",
+    bodyFontSize: 10.6,
   });
 
   addNotes(slide, [
@@ -844,41 +917,45 @@ function slide12_surface_unification() {
   header(slide, p, {
     section: "扩展 · 02",
     title: "多 Surface 的差异点与共性点",
-    subtitle: "强调“入口与输出不同，核心引擎相同”。",
+    subtitle: "按 relationship / segments 重画：三个 surface 围绕同一引擎展开，而不是三套独立系统。",
     accent: C.blue,
   });
 
-  card(slide, 0.72, 1.78, 3.85, 4.95, {
+  diagramNode(slide, 4.62, 3.05, 4.1, 1.45, {
+    title: "Same Engine",
+    body: "QueryEngine + query.ts\nTool Runtime + Permissions",
+    accent: C.gold,
+    fill: C.panelBright,
+    titleSize: 15,
+    bodySize: 10.4,
+  });
+
+  diagramNode(slide, 0.95, 2.18, 2.55, 1.05, {
     title: "Terminal",
-    titleColor: C.blue,
-    fill: C.panel,
-    body: bullets([
-      "Ink UI + AppState",
-      "权限弹窗直观可见",
-      "交互密度最高",
-    ]),
+    body: "Ink UI\n权限弹窗可见",
+    accent: C.blue,
   });
-
-  card(slide, 4.72, 1.78, 3.85, 4.95, {
+  diagramNode(slide, 0.95, 4.72, 2.55, 1.05, {
     title: "Bridge / Remote",
-    titleColor: C.purple,
-    fill: C.panelAlt,
-    body: bullets([
-      "消息桥接与会话同步",
-      "重视 ingress/egress 协议",
-      "强调远程运行一致性",
-    ]),
+    body: "消息桥接\n会话同步",
+    accent: C.purple,
+  });
+  diagramNode(slide, 9.88, 3.45, 2.55, 1.05, {
+    title: "SDK / Headless",
+    body: "结构化输出\n自动化集成",
+    accent: C.green,
   });
 
-  card(slide, 8.72, 1.78, 3.85, 4.95, {
-    title: "SDK / Headless",
-    titleColor: C.green,
-    fill: C.panel,
-    body: bullets([
-      "结构化输出与可集成性",
-      "更少 UI，更多自动化",
-      "适合流水线与平台接入",
-    ]),
+  diagramArrowRight(slide, 3.66, 2.58, 0.62, C.blue);
+  diagramArrowRight(slide, 3.66, 5.1, 0.62, C.purple);
+  diagramArrowRight(slide, 8.84, 3.86, 0.62, C.green);
+
+  card(slide, 4.18, 5.2, 4.95, 1.18, {
+    title: "共同点",
+    titleColor: C.gold,
+    fill: C.panelAlt,
+    body: "差异主要发生在入口与输出；真正共享的是中间那条 Query + Tool + Governance 主链。",
+    bodyFontSize: 10.5,
   });
 
   addNotes(slide, [
