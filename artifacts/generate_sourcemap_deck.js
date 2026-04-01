@@ -1724,8 +1724,331 @@ function slide21_unique_features() {
   ]);
 }
 
+// ── Feature Deep Dives ────────────────────────────────────────────────────────
+// ── Slide 22: Voice 模式 ──────────────────────────────────────────────────────
+function slide22_voice() {
+  const p = nextPage();
+  const slide = pptx.addSlide();
+  header(slide, p, {
+    section: "特色功能 · 02",
+    title: "Voice 模式：Push-to-Talk，接入 Anthropic 语音流服务",
+    subtitle: "不是通用 TTS/STT 库封装——而是直连 claude.ai voice_stream WebSocket，要求 OAuth 登录。",
+    accent: C.cyan,
+  });
+
+  // 左列：架构
+  card(slide, 0.68, 1.68, 5.72, 4.88, {
+    title: "实现架构",
+    titleColor: C.cyan,
+    fill: C.panel,
+    body: bullets([
+      "services/voice.ts — 音频录制主服务（525 行）",
+      "  原生 audio-capture-napi（CoreAudio / ALSA）",
+      "  fallback：SoX rec 或 arecord (Linux)",
+      "  dlopen 懒加载——首次按键触发，避免启动卡顿",
+      "",
+      "services/voiceStreamSTT.ts — 流式 STT（544 行）",
+      "  WebSocket 连接 /api/ws/speech_to_text/voice_stream",
+      "  协议：JSON 控制帧 + 二进制音频帧",
+      "  服务端响应 TranscriptText / TranscriptEndpoint",
+      "  8s KeepAlive 保活，5s safety timeout",
+      "",
+      "services/voiceKeyterms.ts — 关键词识别优化（106 行）",
+      "  voice/voiceModeEnabled.ts — GrowthBook 开关",
+    ]),
+    bodyFontSize: 10.5,
+  });
+
+  // 右上：工作模式
+  card(slide, 6.56, 1.68, 6.1, 2.24, {
+    title: "Push-to-Talk 工作方式",
+    titleColor: C.blue,
+    fill: C.panelAlt,
+    body: bullets([
+      "按住快捷键 → 开始录音（16kHz 单声道）",
+      "松开 → 发送 CloseStream，等待 finalize()",
+      "沉默检测：SoX 2s / 3% 阈值（自动停止模式）",
+      "连接音频帧流式推送，边录边传，降低延迟",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  // 右下：权限与限制
+  card(slide, 6.56, 4.08, 6.1, 2.48, {
+    title: "权限与限制（源码直接说明）",
+    titleColor: C.gold,
+    fill: C.panel,
+    body: bullets([
+      "必须 Anthropic OAuth 登录——API key 不支持",
+      "Bedrock / Vertex / Foundry 均不可用",
+      "tengu_amber_quartz_disabled GrowthBook 紧急关闭开关",
+      "WSL1 / headless Linux：arecord 需 ALSA/PulseAudio",
+      "WSL2+WSLg（Win11）通过 RDP pipes 支持",
+      "冷启动 dlopen 可能阻塞事件循环 1–8s（已有注释说明）",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  addNotes(slide, [
+    "restored-src/src/services/voice.ts",
+    "restored-src/src/services/voiceStreamSTT.ts",
+    "restored-src/src/services/voiceKeyterms.ts",
+    "restored-src/src/voice/voiceModeEnabled.ts",
+  ]);
+}
+
+// ── Slide 23: Vim 模式 ────────────────────────────────────────────────────────
+function slide23_vim() {
+  const p = nextPage();
+  const slide = pptx.addSlide();
+  header(slide, p, {
+    section: "特色功能 · 03",
+    title: "Vim 模式：1,513 行的完整终端编辑器状态机",
+    subtitle: "不是「支持几个快捷键」——而是严格的 INSERT / NORMAL 双模式状态机，含 dot-repeat 和 text objects。",
+    accent: C.green,
+  });
+
+  // 左：状态机图示（用文字模拟）
+  card(slide, 0.68, 1.68, 5.72, 4.88, {
+    title: "状态机设计（types.ts 注释原文）",
+    titleColor: C.green,
+    fill: C.panel,
+  });
+  // 代码块
+  slide.addText(
+    [
+      "VimState",
+      "  INSERT  (tracks insertedText)",
+      "  NORMAL  — CommandState 子状态机",
+      "",
+      "  idle ──┬─[d/c/y]──► operator",
+      "         ├─[1-9]────► count",
+      "         ├─[fFtT]───► find",
+      "         ├─[g]──────► g",
+      "         ├─[r]──────► replace",
+      "         └─[><]─────► indent",
+      "",
+      "  operator ─┬─[motion]──► execute",
+      "            ├─[0-9]────► operatorCount",
+      "            ├─[ia]─────► operatorTextObj",
+      "            └─[fFtT]───► operatorFind",
+    ].join("\n"),
+    {
+      x: 0.88, y: 2.14, w: 5.32, h: 4.28,
+      fontFace: "Menlo", fontSize: 9.8,
+      color: C.green, valign: "top",
+    }
+  );
+
+  // 右上：实现文件
+  card(slide, 6.56, 1.68, 6.1, 2.24, {
+    title: "实现文件（1,513 行）",
+    titleColor: C.green,
+    fill: C.panelAlt,
+    body: bullets([
+      "types.ts（199 行）——状态机类型即文档",
+      "transitions.ts（490 行）——状态转移核心",
+      "operators.ts（556 行）——delete / change / yank",
+      "textObjects.ts（186 行）——w W ( [ { < \" ' ` …",
+      "motions.ts（82 行）——h j k l w b e ^ $ …",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  // 右下：支持的特性
+  card(slide, 6.56, 4.08, 6.1, 2.48, {
+    title: "支持特性（源码验证）",
+    titleColor: C.cyan,
+    fill: C.panel,
+    body: bullets([
+      "完整 operators：delete(d) / change(c) / yank(y)",
+      "Text objects：word / WORD / 括号 / 引号 / 花括号",
+      "Find motions：f F t T（含反向）",
+      "Count prefix：3dw / 2dd / 5j 等",
+      "Dot-repeat（.）：RecordedChange 记录完整重放",
+      "Register：yank/paste 寄存器 + linewise 标记",
+      "MAX_VIM_COUNT = 10000（防止卡死）",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  addNotes(slide, [
+    "restored-src/src/vim/types.ts",
+    "restored-src/src/vim/transitions.ts",
+    "restored-src/src/vim/operators.ts",
+    "restored-src/src/vim/textObjects.ts",
+    "restored-src/src/vim/motions.ts",
+  ]);
+}
+
+// ── Slide 24: Buddy ───────────────────────────────────────────────────────────
+function slide24_buddy() {
+  const p = nextPage();
+  const slide = pptx.addSlide();
+  header(slide, p, {
+    section: "特色功能 · 04",
+    title: "Buddy：你的 AI 伴侣——18 个物种、5 个稀有度、确定性孵化算法",
+    subtitle: "源码里的隐藏彩蛋：2026 年 4 月 1 日 Teaser 窗口，基于 userId hash 生成唯一伴侣。",
+    accent: C.purple,
+  });
+
+  // 左：物种与属性系统
+  card(slide, 0.68, 1.68, 5.72, 4.88, {
+    title: "角色生成系统（1,298 行）",
+    titleColor: C.purple,
+    fill: C.panel,
+    body: bullets([
+      "18 种物种：duck / goose / cat / dragon / octopus /",
+      "  owl / penguin / turtle / snail / ghost / axolotl /",
+      "  capybara / cactus / robot / rabbit / mushroom / chonk / blob",
+      "",
+      "5 个稀有度（按权重）：",
+      "  common 60% / uncommon 25% / rare 10%",
+      "  epic 4% / legendary 1%",
+      "",
+      "6 种眼睛：· ✦ × ◉ @ °",
+      "8 种帽子：crown / tophat / propeller / halo /",
+      "  wizard / beanie / tinyduck（common 无帽子）",
+      "Shiny 概率：1%",
+      "",
+      "5 维属性：DEBUGGING / PATIENCE / CHAOS / WISDOM / SNARK",
+    ]),
+    bodyFontSize: 10.5,
+  });
+
+  // 右上：孵化算法
+  card(slide, 6.56, 1.68, 6.1, 2.55, {
+    title: "确定性孵化算法",
+    titleColor: C.gold,
+    fill: C.panelAlt,
+    body: bullets([
+      "mulberry32（seeded PRNG）+ hashString(userId + SALT)",
+      "SALT = 'friend-2026-401'（固定种子）",
+      "同一 userId 永远孵化同一只伴侣",
+      "Bones 每次从 hash 重新生成，不持久化",
+      "  — 防止用户编辑 config 作弊稀有度",
+      "Soul（name + personality）由模型生成，持久化",
+      "Bun.hash 加速（Bun 环境下用原生 hash）",
+    ]),
+    bodyFontSize: 10.5,
+  });
+
+  // 右下：发布策略
+  card(slide, 6.56, 4.38, 6.1, 2.18, {
+    title: "发布窗口（源码硬编码）",
+    titleColor: C.cyan,
+    fill: C.panel,
+    body: bullets([
+      "Teaser 窗口：2026-04-01 ~ 04-07（本地时区）",
+      "  — 跨时区滚动，避免 UTC 午夜流量峰值",
+      "功能永久上线：2026 年 4 月之后",
+      "feature('BUDDY') gate 控制全局可见性",
+      "companion.ts 注释：'good enough for picking ducks'",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  addNotes(slide, [
+    "restored-src/src/buddy/types.ts",
+    "restored-src/src/buddy/companion.ts",
+    "restored-src/src/buddy/sprites.ts",
+    "restored-src/src/buddy/CompanionSprite.tsx",
+    "restored-src/src/buddy/useBuddyNotification.tsx",
+    "restored-src/src/buddy/prompt.ts",
+  ]);
+}
+
+// ── Slide 25: KAIROS ──────────────────────────────────────────────────────────
+function slide25_kairos() {
+  const p = nextPage();
+  const slide = pptx.addSlide();
+  header(slide, p, {
+    section: "特色功能 · 05",
+    title: "KAIROS：隐藏在 feature gate 背后的 Assistant 模式",
+    subtitle: "代码里出现 20+ 次 feature('KAIROS')——这是一套与 coding agent 并列的 AI 助手运行模式。",
+    accent: C.gold,
+  });
+
+  // 左：是什么
+  card(slide, 0.68, 1.68, 5.72, 2.34, {
+    title: "KAIROS 是什么",
+    titleColor: C.gold,
+    fill: C.panel,
+    body: bullets([
+      "assistant/ 目录下的独立运行模块",
+      "assistant/index.js：isAssistantMode() / initializeAssistantTeam()",
+      "assistant/gate.js：isKairosEnabled()——GrowthBook 动态开关",
+      "assistant/sessionHistory.ts：会话历史翻页 API",
+      "通过 --assistant 命令行参数强制启用",
+      "defaultView: 'chat' 时触发 brief-only 模式",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  // 左下：与 coding agent 的差异
+  card(slide, 0.68, 4.18, 5.72, 2.38, {
+    title: "与 Coding Agent 模式的差异",
+    titleColor: C.red,
+    fill: C.panel,
+    body: bullets([
+      "独立 assistantTeamContext——不共用 coding agent team",
+      "有 pendingAssistantChat（session discover 逻辑）",
+      "assistantActivationPath 影响工具可见性",
+      "getUserMsgOptIn() 控制 brief-only 初始状态",
+      "KAIROS_BRIEF / KAIROS_CHANNELS 是子特性开关",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  // 右上：子特性
+  card(slide, 6.56, 1.68, 6.1, 1.52, {
+    title: "关联子特性",
+    titleColor: C.purple,
+    fill: C.panelAlt,
+    body: bullets([
+      "KAIROS_BRIEF — BriefTool 可见性（检查点汇报）",
+      "KAIROS_CHANNELS — 允许 --channels / --dangerously-load-development-channels",
+      "PROACTIVE — 主动触发，与 KAIROS 部分逻辑共享",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  // 右中：源码信号
+  card(slide, 6.56, 3.36, 6.1, 1.56, {
+    title: "源码直接可见的信号",
+    titleColor: C.cyan,
+    fill: C.panel,
+    body: bullets([
+      "main.tsx 78 行：Dead code elimination 注释",
+      "  — 说明 KAIROS 模块在外部构建中被剔除",
+      "tengu_kairos GrowthBook 标志控制实际启用",
+      "session history 使用 ccr-byoc-2025-07-29 beta 头",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  // 右下：推测
+  card(slide, 6.56, 5.08, 6.1, 1.48, {
+    title: "可以合理推断",
+    titleColor: C.gold,
+    fill: C.panelAlt,
+    body: bullets([
+      "KAIROS 是 Claude.ai 对话能力接入 Claude Code 的通道",
+      "与 Bridge/Remote 共同构成多 surface 战略",
+      "目前仅对内部或白名单用户开放",
+    ]),
+    bodyFontSize: 11,
+  });
+
+  addNotes(slide, [
+    "restored-src/src/main.tsx (lines 78-81, 1049-1086, 1642, 2184-2206)",
+    "restored-src/src/assistant/sessionHistory.ts",
+    "restored-src/src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx",
+  ]);
+}
+
 // ── Section 6: Closing ────────────────────────────────────────────────────────
-// ── Slide 22: 阅读指南 ────────────────────────────────────────────────────────
+// ── Slide 26: 阅读指南 ────────────────────────────────────────────────────────
 function slide22_reading_guide() {
   const p = nextPage();
   const slide = pptx.addSlide();
@@ -1969,6 +2292,10 @@ slide18_sec5_divider();
 slide19_extensions();
 slide20_surfaces();
 slide21_unique_features();
+slide22_voice();
+slide23_vim();
+slide24_buddy();
+slide25_kairos();
 slide22_reading_guide();
 slide23_conclusion();
 slide24_end();
