@@ -21,6 +21,10 @@
 - 还原文件数：**4756 个**（含 1884 个 `.ts`/`.tsx` 源文件）
 - 还原方式：提取 `cli.js.map` 中的 `sourcesContent` 字段
 
+## 演示文稿
+
+- Claude Code SourceMap 分析 deck：[artifacts/claude-code-sourcemap-deck.pptx](./artifacts/claude-code-sourcemap-deck.pptx)
+
 ## 目录结构
 
 ```
