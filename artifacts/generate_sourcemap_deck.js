@@ -13,7 +13,9 @@ const {
   safeOuterShadow,
   imageSizingContain,
   codeToRuns,
+  svgToDataUri,
 } = require("../.agents/skills/slide-skill/pptxgenjs_helpers");
+const { addThreeLevelTree } = require("../.agents/skills/slide-skill/pptxgenjs_helpers/layout_builders");
 
 // ─── Output paths ────────────────────────────────────────────────────────────
 const OUT_DIR = __dirname;
@@ -1724,6 +1726,452 @@ function slide21_unique_features() {
   ]);
 }
 
+// ── Diagram Deep Dives ────────────────────────────────────────────────────────
+
+/**
+ * SVG connector line (straight) for diagram use
+ */
+function addLine(slide, x1, y1, x2, y2, color, pt) {
+  slide.addShape("line", {
+    x: Math.min(x1, x2),
+    y: Math.min(y1, y2),
+    w: Math.abs(x2 - x1) || 0.001,
+    h: Math.abs(y2 - y1) || 0.001,
+    line: { color: color || C.line, pt: pt || 1.2 },
+    flipH: x2 < x1 ? true : undefined,
+  });
+}
+
+/**
+ * 圆角节点
+ */
+function diagramNode(slide, x, y, w, h, { label, sub, color, fill, fontSize, subFontSize } = {}) {
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x, y, w, h,
+    rectRadius: 0.08,
+    fill: { color: fill || C.panel },
+    line: { color: color || C.line, pt: 1.5 },
+    shadow: safeOuterShadow(C.black, 0.08, 45, 1.5, 0.3),
+  });
+  if (label) {
+    slide.addText(label, {
+      x: x + 0.08, y: y + (sub ? 0.1 : h * 0.15), w: w - 0.16, h: sub ? h * 0.5 : h * 0.7,
+      fontSize: fontSize || 11, bold: true, color: color || C.text,
+      align: "center", valign: "mid", fit: "shrink",
+    });
+  }
+  if (sub) {
+    slide.addText(sub, {
+      x: x + 0.08, y: y + h * 0.52, w: w - 0.16, h: h * 0.4,
+      fontSize: subFontSize || 8.5, color: C.muted,
+      align: "center", valign: "top", fit: "shrink",
+    });
+  }
+}
+
+/**
+ * 圆形节点（用于循环图）
+ */
+function circleNode(slide, cx, cy, r, { label, color, fill, fontSize } = {}) {
+  slide.addShape(pptx.ShapeType.ellipse, {
+    x: cx - r, y: cy - r, w: r * 2, h: r * 2,
+    fill: { color: fill || C.panel },
+    line: { color: color || C.line, pt: 2 },
+    shadow: safeOuterShadow(C.black, 0.1, 45, 2, 0.35),
+  });
+  if (label) {
+    slide.addText(label, {
+      x: cx - r + 0.05, y: cy - r * 0.45, w: r * 2 - 0.1, h: r * 0.9,
+      fontSize: fontSize || 10, bold: true, color: color || C.text,
+      align: "center", valign: "mid", fit: "shrink",
+    });
+  }
+}
+
+// ── Diagram Slide A: 五层架构 Tree ─────────────────────────────────────────────
+function slideDiag_arch_tree() {
+  const p = nextPage();
+  const slide = pptx.addSlide();
+  header(slide, p, {
+    section: "架构图解 · 01",
+    title: "五层架构全景——从 CLI 入口到扩展生态的层次关系",
+    subtitle: "每一层的边界和方向性是理解系统的关键。",
+    accent: C.blue,
+  });
+
+  // Layer 1: 入口层
+  const layerW = 11.5;
+  const lx = (W - layerW) / 2;
+
+  const layers = [
+    {
+      y: 1.72, h: 0.72, color: C.cyan, label: "入口层",
+      nodes: [
+        { label: "cli.tsx", sub: "版本快路径 / 模式分流" },
+        { label: "--version", sub: "不加载 main.js" },
+        { label: "--help", sub: "极速输出" },
+        { label: "full mode", sub: "lazy require main.tsx" },
+      ],
+    },
+    {
+      y: 2.68, h: 0.72, color: C.blue, label: "启动编排",
+      nodes: [
+        { label: "main.tsx", sub: "4,683 行 orchestration" },
+        { label: "Auth + Config", sub: "OAuth / API key" },
+        { label: "MCP + LSP init", sub: "外部服务连接" },
+        { label: "Session restore", sub: "历史会话恢复" },
+      ],
+    },
+    {
+      y: 3.64, h: 0.72, color: C.gold, label: "会话核心",
+      nodes: [
+        { label: "QueryEngine", sub: "会话生命周期管理" },
+        { label: "query.ts", sub: "递归 Turn 状态机" },
+        { label: "buildQueryConfig", sub: "运行时配置快照" },
+        { label: "Stream + Collect", sub: "流式消费 tool_use" },
+      ],
+    },
+    {
+      y: 4.6, h: 0.72, color: C.orange, label: "执行治理",
+      nodes: [
+        { label: "toolExecution", sub: "工具执行主路径" },
+        { label: "Pre/Post Hooks", sub: "策略注入点" },
+        { label: "Permissions", sub: "多层决策树" },
+        { label: "Bash Classifier", sub: "自动风险分类" },
+      ],
+    },
+    {
+      y: 5.56, h: 0.72, color: C.purple, label: "扩展能力",
+      nodes: [
+        { label: "AgentTool", sub: "子代理 → query()" },
+        { label: "MCP Client", sub: "外部 server 能力" },
+        { label: "Skills + Plugins", sub: "工作流封装" },
+        { label: "101 Commands", sub: "用户显式入口" },
+      ],
+    },
+  ];
+
+  layers.forEach((layer, li) => {
+    // 左侧层标签
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x: lx - 0.05, y: layer.y, w: 1.38, h: layer.h,
+      rectRadius: 0.06,
+      fill: { color: layer.color },
+      line: { color: layer.color, transparency: 100 },
+    });
+    slide.addText(layer.label, {
+      x: lx, y: layer.y + layer.h * 0.15, w: 1.28, h: layer.h * 0.7,
+      fontSize: 11.5, bold: true, color: C.bg, align: "center", valign: "mid",
+    });
+
+    // 节点
+    const nw = 2.32;
+    const gap = 0.2;
+    const nx0 = lx + 1.5;
+    layer.nodes.forEach((node, ni) => {
+      const nx = nx0 + ni * (nw + gap);
+      diagramNode(slide, nx, layer.y, nw, layer.h, {
+        label: node.label,
+        sub: node.sub,
+        color: layer.color,
+        fill: C.panel,
+        fontSize: 11,
+      });
+    });
+
+    // 层间连接线
+    if (li < layers.length - 1) {
+      const nextLayer = layers[li + 1];
+      // 中心连接
+      addLine(slide, lx + layerW / 2, layer.y + layer.h, lx + layerW / 2, nextLayer.y, layer.color, 1);
+    }
+  });
+
+  addNotes(slide, [
+    "restored-src/src/entrypoints/cli.tsx",
+    "restored-src/src/main.tsx",
+    "restored-src/src/QueryEngine.ts",
+    "restored-src/src/query.ts",
+    "restored-src/src/services/tools/toolExecution.ts",
+  ]);
+}
+
+// ── Diagram Slide B: Turn 循环图 ──────────────────────────────────────────────
+function slideDiag_turn_cycle() {
+  const p = nextPage();
+  const slide = pptx.addSlide();
+  header(slide, p, {
+    section: "架构图解 · 02",
+    title: "Turn 循环图——Agent Loop 的核心执行路径",
+    subtitle: "每轮 turn 都是完整的 Stream → Collect → Execute → Inject → Decide 循环。",
+    accent: C.gold,
+  });
+
+  // 中心圆：Query Loop
+  const cx = W / 2;
+  const cy = 4.05;
+  circleNode(slide, cx, cy, 0.8, {
+    label: "Query\nLoop",
+    color: C.gold,
+    fill: C.panelBright,
+    fontSize: 14,
+  });
+
+  // 环形节点——用固定坐标排布 6 个节点
+  const ringNodes = [
+    { x: cx - 0.9,  y: 1.68, label: "submitMessage()", sub: "QueryEngine 入口", color: C.cyan },
+    { x: cx + 1.3,  y: 1.68, label: "Stream Model", sub: "流式消费 API 响应", color: C.blue },
+    { x: cx + 3.2,  y: 3.18, label: "Collect tool_use", sub: "显式收集 toolUseBlocks", color: C.orange },
+    { x: cx + 1.8,  y: 4.88, label: "runTools()", sub: "并行/串行执行", color: C.red },
+    { x: cx - 1.2,  y: 5.18, label: "Inject Results", sub: "回注为 user message", color: C.green },
+    { x: cx - 3.5,  y: 3.18, label: "needsFollowUp?", sub: "maxTurns / budget", color: C.purple },
+  ];
+
+  const nw = 2.12;
+  const nh = 0.85;
+
+  ringNodes.forEach((rn, i) => {
+    diagramNode(slide, rn.x, rn.y, nw, nh, {
+      label: rn.label,
+      sub: rn.sub,
+      color: rn.color,
+      fill: C.panel,
+      fontSize: 10.5,
+    });
+    // 连线到下一个节点
+    const next = ringNodes[(i + 1) % ringNodes.length];
+    const fromCx = rn.x + nw / 2;
+    const fromCy = rn.y + nh;
+    const toCx = next.x + nw / 2;
+    const toCy = next.y;
+    // 选择合理的连接点
+    let fx, fy, tx, ty;
+    if (i === 0) { fx = rn.x + nw; fy = rn.y + nh / 2; tx = next.x; ty = next.y + nh / 2; }
+    else if (i === 1) { fx = rn.x + nw; fy = rn.y + nh / 2; tx = next.x; ty = next.y + nh / 2; }
+    else if (i === 2) { fx = rn.x + nw / 2; fy = rn.y + nh; tx = next.x + nw / 2; ty = next.y; }
+    else if (i === 3) { fx = rn.x; fy = rn.y + nh / 2; tx = next.x + nw; ty = next.y + nh / 2; }
+    else if (i === 4) { fx = rn.x; fy = rn.y + nh / 2; tx = next.x + nw; ty = next.y + nh / 2; }
+    else { fx = rn.x + nw / 2; fy = rn.y; tx = next.x + nw / 2; ty = next.y + nh; }
+
+    addLine(slide, fx, fy, tx, ty, rn.color, 1.2);
+  });
+
+  // 右侧补充文字
+  card(slide, 9.5, 1.68, 3.5, 2.05, {
+    title: "Stop 条件",
+    titleColor: C.red,
+    fill: C.panelAlt,
+    body: bullets([
+      "stop_reason = end_turn",
+      "needsFollowUp = false",
+      "maxTurns 达到上限",
+      "taskBudget 耗尽",
+    ]),
+    bodyFontSize: 9.5,
+  });
+
+  card(slide, 9.5, 3.88, 3.5, 2.05, {
+    title: "Continue 条件",
+    titleColor: C.green,
+    fill: C.panel,
+    body: bullets([
+      "有 tool_use blocks 待执行",
+      "工具结果已回注",
+      "compact 后仍有 budget",
+      "无 abort 信号",
+    ]),
+    bodyFontSize: 9.5,
+  });
+
+  addNotes(slide, [
+    "restored-src/src/query.ts",
+    "restored-src/src/QueryEngine.ts",
+  ]);
+}
+
+// ── Diagram Slide C: 权限决策树 ───────────────────────────────────────────────
+function slideDiag_permission_tree() {
+  const p = nextPage();
+  const slide = pptx.addSlide();
+  header(slide, p, {
+    section: "架构图解 · 03",
+    title: "权限决策树——一次工具调用经历的四层判断",
+    subtitle: "从 Hook 到 Rule 到 Classifier 到 UI，每层都可能中断或放行。",
+    accent: C.orange,
+  });
+
+  // 四列判断层
+  const colW = 2.62;
+  const colGap = 0.32;
+  const colStart = 0.72;
+
+  const decisionLayers = [
+    {
+      title: "Layer 1: Hook",
+      color: C.purple,
+      nodes: [
+        { label: "Pre Hook", result: "hookPermissionResult" },
+        { label: "deny", outcome: "REJECT", outcomeColor: C.red },
+        { label: "allow", outcome: "-> Layer 2", outcomeColor: C.green },
+        { label: "ask", outcome: "-> Layer 3", outcomeColor: C.gold },
+      ],
+    },
+    {
+      title: "Layer 2: Rules",
+      color: C.blue,
+      nodes: [
+        { label: "checkRuleBasedPermissions", result: "PermissionRule[]" },
+        { label: "rule deny", outcome: "REJECT", outcomeColor: C.red },
+        { label: "rule allow", outcome: "ALLOW", outcomeColor: C.green },
+        { label: "no match", outcome: "-> Layer 3", outcomeColor: C.gold },
+      ],
+    },
+    {
+      title: "Layer 3: Classifier",
+      color: C.cyan,
+      nodes: [
+        { label: "bashClassifier", result: "BashTool only" },
+        { label: "safe pattern", outcome: "AUTO ALLOW", outcomeColor: C.green },
+        { label: "dangerous", outcome: "-> Layer 4", outcomeColor: C.gold },
+        { label: "unknown", outcome: "-> Layer 4", outcomeColor: C.gold },
+      ],
+    },
+    {
+      title: "Layer 4: User UI",
+      color: C.gold,
+      nodes: [
+        { label: "canUseTool()", result: "最终兜底" },
+        { label: "user allow", outcome: "ALLOW", outcomeColor: C.green },
+        { label: "user deny", outcome: "REJECT", outcomeColor: C.red },
+        { label: "always allow", outcome: "write rule", outcomeColor: C.blue },
+      ],
+    },
+  ];
+
+  decisionLayers.forEach((layer, li) => {
+    const lx = colStart + li * (colW + colGap);
+    const ly = 1.72;
+
+    // 列标题
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x: lx, y: ly, w: colW, h: 0.36,
+      rectRadius: 0.04,
+      fill: { color: layer.color },
+      line: { color: layer.color, transparency: 100 },
+    });
+    slide.addText(layer.title, {
+      x: lx + 0.08, y: ly + 0.04, w: colW - 0.16, h: 0.28,
+      fontSize: 11, bold: true, color: C.bg, align: "center",
+    });
+
+    // 入口节点
+    const entryY = ly + 0.52;
+    diagramNode(slide, lx, entryY, colW, 0.72, {
+      label: layer.nodes[0].label,
+      sub: layer.nodes[0].result,
+      color: layer.color,
+      fill: C.panel,
+      fontSize: 10,
+    });
+
+    // 结果分支
+    const branchY = entryY + 0.92;
+    layer.nodes.slice(1).forEach((branch, bi) => {
+      const bx = lx + bi * (colW / 3);
+      const bw = colW / 3 - 0.04;
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: bx, y: branchY, w: bw, h: 0.86,
+        rectRadius: 0.05,
+        fill: { color: C.panelAlt },
+        line: { color: branch.outcomeColor, pt: 1.2 },
+      });
+      slide.addText(branch.label, {
+        x: bx + 0.04, y: branchY + 0.06, w: bw - 0.08, h: 0.3,
+        fontSize: 8.5, bold: true, color: C.textSoft, align: "center",
+      });
+      slide.addText(branch.outcome, {
+        x: bx + 0.04, y: branchY + 0.4, w: bw - 0.08, h: 0.36,
+        fontSize: 9, bold: true, color: branch.outcomeColor, align: "center",
+      });
+
+      // 从入口到分支的连线
+      addLine(slide,
+        lx + colW / 2, entryY + 0.72,
+        bx + bw / 2, branchY,
+        layer.color, 1
+      );
+    });
+
+    // 层间连线（到下一层入口）
+    if (li < decisionLayers.length - 1) {
+      const nextLx = colStart + (li + 1) * (colW + colGap);
+      // allow/ask 分支连到下一层
+      addLine(slide,
+        lx + colW, entryY + 0.36,
+        nextLx, entryY + 0.36,
+        layer.color, 1
+      );
+    }
+  });
+
+  // 底部摘要
+  card(slide, 0.72, 4.0, 11.85, 2.38, {
+    title: "权限系统的工程意义",
+    titleColor: C.orange,
+    fill: C.panel,
+  });
+
+  const summaryPoints = [
+    {
+      title: "不可绕过",
+      body: "权限检查在 toolExecution.ts 主路径上，不是可选 middleware。跳过执行 = 跳过权限检查 = 工具不会被调用。",
+      color: C.red,
+    },
+    {
+      title: "层层叠加",
+      body: "Hook deny 最优先，但 Hook allow 不代表通过——Rule 层仍可覆盖。这使企业策略 > 用户偏好成为可能。",
+      color: C.purple,
+    },
+    {
+      title: "自动化友好",
+      body: "bashClassifier + yoloClassifier 让 auto 模式下安全命令跳过确认，同时保留对 rm -rf / sudo 等的拦截。",
+      color: C.green,
+    },
+    {
+      title: "可追溯",
+      body: "permissionDenials 在 QueryEngine 中累积，denialTracking.ts 记录完整决策链路，可用于事后审计。",
+      color: C.gold,
+    },
+  ];
+
+  let sx = 0.92;
+  summaryPoints.forEach((sp, si) => {
+    slide.addText(sp.title, {
+      x: sx, y: 4.36, w: 2.72, h: 0.24,
+      fontSize: 10.5, bold: true, color: sp.color,
+    });
+    slide.addText(sp.body, {
+      x: sx, y: 4.62, w: 2.72, h: 1.5,
+      fontSize: 9.5, color: C.textSoft, lineSpacingMultiple: 1.35, valign: "top",
+    });
+    if (si < summaryPoints.length - 1) {
+      slide.addShape(pptx.ShapeType.rect, {
+        x: sx + 2.74, y: 4.36, w: 0.015, h: 1.8,
+        fill: { color: C.line }, line: { color: C.line, transparency: 100 },
+      });
+    }
+    sx += 2.94;
+  });
+
+  addNotes(slide, [
+    "restored-src/src/services/tools/toolExecution.ts",
+    "restored-src/src/services/tools/toolHooks.ts",
+    "restored-src/src/utils/permissions/bashClassifier.ts",
+    "restored-src/src/utils/permissions/permissions.ts",
+    "restored-src/src/utils/permissions/denialTracking.ts",
+  ]);
+}
+
 // ── Feature Deep Dives ────────────────────────────────────────────────────────
 // ── Slide 22: Voice 模式 ──────────────────────────────────────────────────────
 function slide22_voice() {
@@ -2277,14 +2725,17 @@ slide03_scale();
 slide04_sec1_divider();
 slide05_arch_overview();
 slide06_module_map();
+slideDiag_arch_tree();
 slide07_sec2_divider();
 slide08_queryengine();
 slide09_turn_sequence();
 slide10_fallback();
+slideDiag_turn_cycle();
 slide11_sec3_divider();
 slide12_tools();
 slide13_hooks();
 slide14_permissions();
+slideDiag_permission_tree();
 slide15_sec4_divider();
 slide16_agent_system();
 slide17_teammate_actor();
